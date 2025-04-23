@@ -93,21 +93,21 @@ class ServiceDeployment(ComponentResource):
             metadata=ObjectMetaArgs(
                 name=name,
                 namespace=namespace,
-                labels=self.deployment.metadata.apply(lambda m: m.labels),
+                labels=deployment.metadata.apply(lambda m: m.labels),
             ),
             spec=ServiceSpecArgs(
                 ports=[ServicePortArgs(
                     port=host_port,
                     target_port=container_port,
                 )],
-                selector=self.deployment.spec.apply(lambda s: s.template.metadata.labels),
+                selector=deployment.spec.apply(lambda s: s.template.metadata.labels),
                 type=("LoadBalancer") if allocate_ip_address else None,
             ),
             opts=pulumi.ResourceOptions(parent=self))
 
         # Return IP address if applicable
         if allocate_ip_address:
-            ingress=self.service.status.apply(lambda s: s.load_balancer.ingress[0])
+            ingress=service.status.apply(lambda s: s.load_balancer.ingress[0])
             self.ip_address = ingress.apply(lambda i: i.ip or i.hostname or "")
             
         self.register_outputs({})
