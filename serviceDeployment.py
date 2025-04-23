@@ -34,10 +34,6 @@ class ServiceDeployment(ComponentResource):
     """
     Deploys a Kubernetes service and deployment.
     """
-    deployment: Deployment
-    """The deployment resource."""
-    service: Service
-    """The service resource."""
     ip_address: Output[str]
     """The IP address of the service. This is only available if allocate_ip_address is set to true."""
 
@@ -70,7 +66,7 @@ class ServiceDeployment(ComponentResource):
         )
 
         # Deployment
-        self.deployment = Deployment(
+        deployment = Deployment(
             name,
             metadata=ObjectMetaArgs(
                 namespace=namespace
@@ -86,7 +82,7 @@ class ServiceDeployment(ComponentResource):
             opts=pulumi.ResourceOptions(parent=self))
         
         # Service
-        self.service = Service(
+        service = Service(
             name,
             metadata=ObjectMetaArgs(
                 name=name,
