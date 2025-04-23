@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, TypedDict
+from typing import Optional, TypedDict
 
 import pulumi
 from pulumi import ResourceOptions, ComponentResource, Output
@@ -25,8 +25,10 @@ class ServiceDeploymentArgs(TypedDict):
     """Resource requirements for the container"""
     replicas: Optional[pulumi.Input[int]]
     """Number of replicas for the deployment"""
-    ports: Optional[pulumi.Input[Sequence[int]]]
-    """Ports to expose on the service. This should be a list of integers"""
+    container_port: Optional[pulumi.Input[int]]
+    """Container port to expose. This should be an integer"""
+    host_port: Optional[pulumi.Input[int]]
+    """Host port to expose. This should be an integer"""
     allocate_ip_address: pulumi.Input[bool]
     """Whether to allocate an IP address for the service. This should be true or false"""
 
@@ -49,9 +51,8 @@ class ServiceDeployment(ComponentResource):
                                 "cpu": "100m",
                                 "memory": "100Mi"}))
         replicas = args.get("replicas", 1)
-        ports = args.get("ports", [])
-        container_ports_config=[ContainerPortArgs(container_port=p) for p in ports] if ports else None,
-        service_ports_config=[ServicePortArgs(port=p, target_port=p) for p in ports] if ports else None,
+        container_port = args.get("container_port", None)
+        host_port = args.get("host_port", None)
         allocate_ip_address = args.get("allocate_ip_address", False)
 
         # Labels used for the deployment and service.
@@ -62,7 +63,9 @@ class ServiceDeployment(ComponentResource):
             name=name,
             image=image,
             resources=resources, 
-            ports=container_ports_config,
+            ports=[ContainerPortArgs(
+                container_port=container_port,
+            )],
         )
 
         # Deployment
@@ -90,7 +93,10 @@ class ServiceDeployment(ComponentResource):
                 labels=self.deployment.metadata.apply(lambda m: m.labels),
             ),
             spec=ServiceSpecArgs(
-                ports=service_ports_config,
+                ports=[ServicePortArgs(
+                    port=host_port,
+                    target_port=container_port,
+                )],
                 selector=self.deployment.spec.apply(lambda s: s.template.metadata.labels),
                 type=("LoadBalancer") if allocate_ip_address else None,
             ),
