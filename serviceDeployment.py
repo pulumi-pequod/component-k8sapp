@@ -31,6 +31,7 @@ class ServiceDeploymentArgs(TypedDict):
     """Host port to expose. This should be an integer"""
     allocate_ip_address: pulumi.Input[bool]
     """Whether to allocate an IP address for the service. This should be true or false"""
+    env_vars: Optional[pulumi.Input[list[dict]]]
 
 class ServiceDeployment(ComponentResource):
     """
@@ -66,6 +67,7 @@ class ServiceDeployment(ComponentResource):
             ports=[ContainerPortArgs(
                 container_port=container_port,
             )],
+            env=[{"name": "GET_HOSTS_FROM", "value": "dns" }].append(args.get("env_vars", [])),
         )
 
         # Deployment
