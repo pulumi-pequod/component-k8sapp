@@ -32,7 +32,7 @@ class ServiceDeploymentArgs(TypedDict):
     """Host port to expose. This should be an integer"""
     allocate_ip_address: pulumi.Input[bool]
     """Whether to allocate an IP address for the service. This should be true or false"""
-    env_vars: Optional[pulumi.Input[Sequence[pulumi.Input[EnvVarArgs]]]] 
+    env_vars: Optional[pulumi.Input[list[dict[str, pulumi.Input[str]]]]]
 
 class ServiceDeployment(ComponentResource):
     """
@@ -56,9 +56,19 @@ class ServiceDeployment(ComponentResource):
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", None)
         allocate_ip_address = args.get("allocate_ip_address", False)
+        env_vars = args.get("env_vars") 
+        env_vars.append({"name":"GET_HOSTS_FROM", "value": "dns"})
 
         # Labels used for the deployment and service.
         labels = {"app": name}
+
+        # Build the env vars
+        env_var_args = []
+        for env_var in env_vars:
+            env_var_args.append(EnvVarArgs(
+                name=env_var["name"],
+                value=env_var["value"]
+            ))
 
         # Container config
         container = ContainerArgs(
@@ -68,8 +78,11 @@ class ServiceDeployment(ComponentResource):
             ports=[ContainerPortArgs(
                 container_port=container_port,
             )],
-            env=[EnvVarArgs(name="GET_HOSTS_FROM", value="dns")].append(args.get("env_vars", [])),
+            env=env_var_args,
+            # env=[EnvVarArgs(name="GET_HOSTS_FROM", value="dns")].append(env_vars)
+            # env=[{ "ESC_ENV_NAME": "thing1"}, { "PULUMI_ACCESS_TOKEN": "thing2"}],
         )
+
 
         # Deployment
         deployment = Deployment(
