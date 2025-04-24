@@ -26,7 +26,7 @@ class ServiceDeploymentArgs(TypedDict):
     """Resource requirements for the container"""
     replicas: Optional[pulumi.Input[int]]
     """Number of replicas for the deployment"""
-    container_port: Optional[pulumi.Input[int]]
+    container_port: pulumi.Input[int]
     """Container port to expose. This should be an integer"""
     host_port: Optional[pulumi.Input[int]]
     """Host port to expose. This should be an integer"""
@@ -54,10 +54,13 @@ class ServiceDeployment(ComponentResource):
                                 "memory": "100Mi"}))
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
-        host_port = args.get("host_port", None)
+        host_port = args.get("host_port", container_port)
         allocate_ip_address = args.get("allocate_ip_address", False)
         env_vars = args.get("env_vars") 
-        env_vars.append({"name":"GET_HOSTS_FROM", "value": "dns"})
+        if env_vars:
+            env_vars.append({"name":"GET_HOSTS_FROM", "value": "dns"})
+        else:
+            env_vars = [{"name":"GET_HOSTS_FROM", "value": "dns"}]
 
         # Labels used for the deployment and service.
         labels = {"app": name}
