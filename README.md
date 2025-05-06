@@ -53,7 +53,8 @@ const frontend = new ServiceDeployment("frontend", {
     namespace: guestbookNsName,
     containerPort: 80,
     allocateIpAddress: true,
-}, { provider: k8sProvider });```
+}, { provider: k8sProvider });
+```
 
 ### Dotnet
 ```
