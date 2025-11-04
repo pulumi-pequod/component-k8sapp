@@ -33,6 +33,10 @@ class ServiceDeploymentArgs(TypedDict):
     allocate_ip_address: pulumi.Input[bool]
     """Whether to allocate an IP address for the service. This should be true or false"""
     env_vars: Optional[pulumi.Input[list[dict[str, pulumi.Input[str]]]]]
+    cpu: Optional[pulumi.Input[str]]
+    """CPU resource request. Units: millicores (e.g., '100m') or cores (e.g., '1', '0.5')"""
+    mem: Optional[pulumi.Input[str]]
+    """Memory resource request. Units: bytes with optional suffixes (e.g., '128Mi', '1Gi', '512M')"""
 
 class ServiceDeployment(ComponentResource):
     """
@@ -48,10 +52,12 @@ class ServiceDeployment(ComponentResource):
         # Collect the inputs and set defaults if needed.
         namespace = args.get("namespace")
         image = args.get("image")
+        cpu = args.get("cpu", "100m")
+        mem = args.get("mem", "100Mi")
         resources = args.get("resources", 
                              ResourceRequirementsArgs(requests={
-                                "cpu": "100m",
-                                "memory": "100Mi"}))
+                                "cpu": cpu,
+                                "memory": mem}))
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", container_port)
