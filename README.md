@@ -59,8 +59,7 @@ gpu_service = ServiceDeployment(
     container_port=8080,
     allocate_ip_address=True,
     node_selector={
-        "cloud.google.com/gke-accelerator": "nvidia-a100-80gb",
-        "cloud.google.com/gke-accelerator-count": "1",
+        "cloud.google.com/gke-accelerator": "nvidia-l4",
     },
     resources=k8s.core.v1.ResourceRequirementsArgs(
         requests={"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1"},
