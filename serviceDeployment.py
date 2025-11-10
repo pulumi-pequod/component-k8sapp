@@ -59,10 +59,14 @@ class ServiceDeployment(ComponentResource):
         mem = args.get("mem", "100Mi")
         node_selector = args.get("node_selector")
         
-        resources = args.get("resources", 
-                             ResourceRequirementsArgs(requests={
-                                "cpu": cpu,
-                                "memory": mem}))
+        # Handle resources: if user provides resources, use it directly.
+        # Otherwise, build default resources from cpu/mem parameters.
+        # This allows users to specify full resource requirements including GPU limits.
+        resources = args.get("resources")
+        if resources is None:
+            resources = ResourceRequirementsArgs(
+                requests={"cpu": cpu, "memory": mem}
+            )
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", container_port)
@@ -99,6 +103,7 @@ class ServiceDeployment(ComponentResource):
         deployment = Deployment(
             name,
             metadata=ObjectMetaArgs(
+                name=name,
                 namespace=namespace
             ),
             spec=DeploymentSpecArgs(
@@ -134,7 +139,15 @@ class ServiceDeployment(ComponentResource):
 
         # Return IP address if applicable
         if allocate_ip_address:
-            ingress=service.status.apply(lambda s: s.load_balancer.ingress[0])
-            self.ip_address = ingress.apply(lambda i: i.ip or i.hostname or "")
+            # Robust IP address extraction that handles None cases
+            self.ip_address = service.status.apply(
+                lambda s: (
+                    s.load_balancer.ingress[0].ip
+                    or s.load_balancer.ingress[0].hostname
+                    or ""
+                    if s and s.load_balancer and s.load_balancer.ingress
+                    else ""
+                )
+            )
             
         self.register_outputs({})
