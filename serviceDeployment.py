@@ -37,6 +37,9 @@ class ServiceDeploymentArgs(TypedDict):
     """CPU resource request. Units: millicores (e.g., '100m') or cores (e.g., '1', '0.5')"""
     mem: Optional[pulumi.Input[str]]
     """Memory resource request. Units: bytes with optional suffixes (e.g., '128Mi', '1Gi', '512M')"""
+    node_selector: Optional[pulumi.Input[dict[str, pulumi.Input[str]]]]
+    """Node selector constraints for pod scheduling. For GKE Autopilot GPU selection, use: 
+    {'cloud.google.com/gke-accelerator': 'GPU_TYPE', 'cloud.google.com/gke-accelerator-count': 'GPU_COUNT'}"""
 
 class ServiceDeployment(ComponentResource):
     """
@@ -54,6 +57,8 @@ class ServiceDeployment(ComponentResource):
         image = args.get("image")
         cpu = args.get("cpu", "100m")
         mem = args.get("mem", "100Mi")
+        node_selector = args.get("node_selector")
+        
         resources = args.get("resources", 
                              ResourceRequirementsArgs(requests={
                                 "cpu": cpu,
@@ -88,10 +93,7 @@ class ServiceDeployment(ComponentResource):
                 container_port=container_port,
             )],
             env=env_var_args,
-            # env=[EnvVarArgs(name="GET_HOSTS_FROM", value="dns")].append(env_vars)
-            # env=[{ "ESC_ENV_NAME": "thing1"}, { "PULUMI_ACCESS_TOKEN": "thing2"}],
         )
-
 
         # Deployment
         deployment = Deployment(
@@ -104,7 +106,10 @@ class ServiceDeployment(ComponentResource):
                 replicas=replicas,
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(labels=labels),
-                    spec=PodSpecArgs(containers=[container]),
+                    spec=PodSpecArgs(
+                        containers=[container],
+                        node_selector=node_selector,
+                    ),
                 ),
             ),
             opts=pulumi.ResourceOptions(parent=self))
