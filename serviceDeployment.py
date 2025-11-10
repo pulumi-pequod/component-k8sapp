@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, TypedDict
+from typing import Optional, TypedDict
 
 import pulumi
 from pulumi import ResourceOptions, ComponentResource, Output
@@ -13,7 +13,6 @@ from pulumi_kubernetes.core.v1 import (
     Service,
     ServicePortArgs,
     ServiceSpecArgs,
-    TolerationArgs,
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
@@ -41,9 +40,7 @@ class ServiceDeploymentArgs(TypedDict):
     """Memory resource request. Units: bytes with optional suffixes (e.g., '128Mi', '1Gi', '512M')"""
     node_selector: Optional[pulumi.Input[dict[str, pulumi.Input[str]]]]
     """Node selector constraints for pod scheduling. For GKE Autopilot GPU selection, use: 
-    {'cloud.google.com/gke-accelerator': 'GPU_TYPE', 'cloud.google.com/gke-accelerator-count': 'GPU_COUNT'}"""
-    tolerations: Optional[pulumi.Input[Sequence[TolerationArgs]]]
-    """Tolerations for pod scheduling. For GKE Autopilot, use to tolerate balloon pod resize operations."""
+    {'cloud.google.com/gke-accelerator': 'GPU_TYPE'}"""
 
 
 class ServiceDeployment(ComponentResource):
@@ -66,7 +63,6 @@ class ServiceDeployment(ComponentResource):
         cpu = args.get("cpu", "100m")
         mem = args.get("mem", "100Mi")
         node_selector = args.get("node_selector")
-        tolerations = args.get("tolerations")
 
         # Handle resources: if user provides resources, use it directly.
         # Otherwise, build default resources from cpu/mem parameters.
@@ -94,29 +90,6 @@ class ServiceDeployment(ComponentResource):
                 EnvVarArgs(name=env_var["name"], value=env_var["value"])
             )
 
-        # Build the tolerations
-        toleration_args = []
-        if tolerations:
-            for toleration in tolerations:
-                if isinstance(toleration, dict):
-                    # Only pass non-None values to avoid empty string serialization
-                    tol_kwargs = {}
-                    if toleration.get("key") is not None:
-                        tol_kwargs["key"] = toleration.get("key")
-                    if toleration.get("operator") is not None:
-                        tol_kwargs["operator"] = toleration.get("operator")
-                    if toleration.get("value") is not None:
-                        tol_kwargs["value"] = toleration.get("value")
-                    if toleration.get("effect") is not None:
-                        tol_kwargs["effect"] = toleration.get("effect")
-                    if toleration.get("toleration_seconds") is not None:
-                        tol_kwargs["toleration_seconds"] = toleration.get(
-                            "toleration_seconds"
-                        )
-                    toleration_args.append(TolerationArgs(**tol_kwargs))
-                else:
-                    toleration_args.append(toleration)
-
         # Container config
         container = ContainerArgs(
             name=name,
@@ -142,7 +115,6 @@ class ServiceDeployment(ComponentResource):
                     spec=PodSpecArgs(
                         containers=[container],
                         node_selector=node_selector,
-                        tolerations=toleration_args if toleration_args else None,
                     ),
                 ),
             ),
