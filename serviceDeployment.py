@@ -99,15 +99,21 @@ class ServiceDeployment(ComponentResource):
         if tolerations:
             for toleration in tolerations:
                 if isinstance(toleration, dict):
-                    toleration_args.append(
-                        TolerationArgs(
-                            key=toleration.get("key"),
-                            operator=toleration.get("operator"),
-                            value=toleration.get("value"),
-                            effect=toleration.get("effect"),
-                            toleration_seconds=toleration.get("toleration_seconds"),
+                    # Only pass non-None values to avoid empty string serialization
+                    tol_kwargs = {}
+                    if toleration.get("key") is not None:
+                        tol_kwargs["key"] = toleration.get("key")
+                    if toleration.get("operator") is not None:
+                        tol_kwargs["operator"] = toleration.get("operator")
+                    if toleration.get("value") is not None:
+                        tol_kwargs["value"] = toleration.get("value")
+                    if toleration.get("effect") is not None:
+                        tol_kwargs["effect"] = toleration.get("effect")
+                    if toleration.get("toleration_seconds") is not None:
+                        tol_kwargs["toleration_seconds"] = toleration.get(
+                            "toleration_seconds"
                         )
-                    )
+                    toleration_args.append(TolerationArgs(**tol_kwargs))
                 else:
                     toleration_args.append(toleration)
 
