@@ -13,8 +13,10 @@ from pulumi_kubernetes.core.v1 import (
     Service,
     ServicePortArgs,
     ServiceSpecArgs,
+    TolerationArgs,
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
+
 
 class ServiceDeploymentArgs(TypedDict):
 
@@ -40,17 +42,23 @@ class ServiceDeploymentArgs(TypedDict):
     node_selector: Optional[pulumi.Input[dict[str, pulumi.Input[str]]]]
     """Node selector constraints for pod scheduling. For GKE Autopilot GPU selection, use: 
     {'cloud.google.com/gke-accelerator': 'GPU_TYPE', 'cloud.google.com/gke-accelerator-count': 'GPU_COUNT'}"""
+    tolerations: Optional[pulumi.Input[Sequence[TolerationArgs]]]
+    """Tolerations for pod scheduling. For GKE Autopilot, use to tolerate balloon pod resize operations."""
+
 
 class ServiceDeployment(ComponentResource):
     """
     Deploys a Kubernetes service and deployment.
     """
+
     ip_address: Output[str]
     """The IP address of the service. This is only available if allocate_ip_address is set to true."""
 
-    def __init__(self, name: str, args: ServiceDeploymentArgs, opts: ResourceOptions = None):
+    def __init__(
+        self, name: str, args: ServiceDeploymentArgs, opts: ResourceOptions = None
+    ):
 
-        super().__init__('k8sapp:index:ServiceDeployment', name, {}, opts)
+        super().__init__("k8sapp:index:ServiceDeployment", name, {}, opts)
 
         # Collect the inputs and set defaults if needed.
         namespace = args.get("namespace")
@@ -58,24 +66,23 @@ class ServiceDeployment(ComponentResource):
         cpu = args.get("cpu", "100m")
         mem = args.get("mem", "100Mi")
         node_selector = args.get("node_selector")
-        
+        tolerations = args.get("tolerations")
+
         # Handle resources: if user provides resources, use it directly.
         # Otherwise, build default resources from cpu/mem parameters.
         # This allows users to specify full resource requirements including GPU limits.
         resources = args.get("resources")
         if resources is None:
-            resources = ResourceRequirementsArgs(
-                requests={"cpu": cpu, "memory": mem}
-            )
+            resources = ResourceRequirementsArgs(requests={"cpu": cpu, "memory": mem})
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", container_port)
         allocate_ip_address = args.get("allocate_ip_address", False)
-        env_vars = args.get("env_vars") 
+        env_vars = args.get("env_vars")
         if env_vars:
-            env_vars.append({"name":"GET_HOSTS_FROM", "value": "dns"})
+            env_vars.append({"name": "GET_HOSTS_FROM", "value": "dns"})
         else:
-            env_vars = [{"name":"GET_HOSTS_FROM", "value": "dns"}]
+            env_vars = [{"name": "GET_HOSTS_FROM", "value": "dns"}]
 
         # Labels used for the deployment and service.
         labels = {"app": name}
@@ -83,29 +90,27 @@ class ServiceDeployment(ComponentResource):
         # Build the env vars
         env_var_args = []
         for env_var in env_vars:
-            env_var_args.append(EnvVarArgs(
-                name=env_var["name"],
-                value=env_var["value"]
-            ))
+            env_var_args.append(
+                EnvVarArgs(name=env_var["name"], value=env_var["value"])
+            )
 
         # Container config
         container = ContainerArgs(
             name=name,
             image=image,
-            resources=resources, 
-            ports=[ContainerPortArgs(
-                container_port=container_port,
-            )],
+            resources=resources,
+            ports=[
+                ContainerPortArgs(
+                    container_port=container_port,
+                )
+            ],
             env=env_var_args,
         )
 
         # Deployment
         deployment = Deployment(
             name,
-            metadata=ObjectMetaArgs(
-                name=name,
-                namespace=namespace
-            ),
+            metadata=ObjectMetaArgs(name=name, namespace=namespace),
             spec=DeploymentSpecArgs(
                 selector=LabelSelectorArgs(match_labels=labels),
                 replicas=replicas,
@@ -114,11 +119,13 @@ class ServiceDeployment(ComponentResource):
                     spec=PodSpecArgs(
                         containers=[container],
                         node_selector=node_selector,
+                        tolerations=tolerations,
                     ),
                 ),
             ),
-            opts=pulumi.ResourceOptions(parent=self))
-        
+            opts=pulumi.ResourceOptions(parent=self),
+        )
+
         # Service
         service = Service(
             name,
@@ -128,14 +135,17 @@ class ServiceDeployment(ComponentResource):
                 labels=deployment.metadata.apply(lambda m: m.labels),
             ),
             spec=ServiceSpecArgs(
-                ports=[ServicePortArgs(
-                    port=host_port,
-                    target_port=container_port,
-                )],
+                ports=[
+                    ServicePortArgs(
+                        port=host_port,
+                        target_port=container_port,
+                    )
+                ],
                 selector=deployment.spec.apply(lambda s: s.template.metadata.labels),
                 type=("LoadBalancer") if allocate_ip_address else None,
             ),
-            opts=pulumi.ResourceOptions(parent=self))
+            opts=pulumi.ResourceOptions(parent=self),
+        )
 
         # Return IP address if applicable
         if allocate_ip_address:
@@ -149,5 +159,5 @@ class ServiceDeployment(ComponentResource):
                     else ""
                 )
             )
-            
+
         self.register_outputs({})

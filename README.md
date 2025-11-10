@@ -14,6 +14,7 @@ Abstraction for K8s Deployment and Service.
 * replicas (Optional): Number of replicas for the deployment. Defaults to 1.
 * env_vars (Optional): Environment variables to pass to cluster. Defaults to none.
 * node_selector (Optional): Node selector constraints for pod scheduling.
+* tolerations (Optional): Tolerations for pod scheduling. For GKE Autopilot, use to tolerate balloon pod resize operations.
 
 # Outputs
 
@@ -60,8 +61,14 @@ gpu_service = ServiceDeployment(
     allocate_ip_address=True,
     node_selector={
         "cloud.google.com/gke-accelerator": "nvidia-a100-80gb",
-        "cloud.google.com/gke-accelerator-count": "1",
     },
+    tolerations=[
+        k8s.core.v1.TolerationArgs(
+            key="node.gke.io/balloon-pod-resize",
+            operator="Exists",
+            effect="NoSchedule",
+        )
+    ],
     resources=k8s.core.v1.ResourceRequirementsArgs(
         requests={"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1"},
         limits={"nvidia.com/gpu": "1"},
