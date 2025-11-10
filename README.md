@@ -42,6 +42,8 @@ serviceDeployment = ServiceDeployment(
     "redis-leader",
     namespace=guestbook_ns_name,
     image="redis",
+    cpu="0.25",
+    mem="2Gi",
     container_port=6379, 
     allocate_ip_address=False,
     opts=pulumi.ResourceOptions(provider=k8s_provider))
@@ -61,10 +63,16 @@ gpu_service = ServiceDeployment(
     node_selector={
         "cloud.google.com/gke-accelerator": "nvidia-l4",
     },
-    resources=k8s.core.v1.ResourceRequirementsArgs(
-        requests={"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1"},
-        limits={"nvidia.com/gpu": "1"},
-    ),
+    resources={
+        "requests": {
+            "cpu": "4",
+            "memory": "16Gi",
+            "nvidia.com/gpu": "1",
+        },
+        "limits": {
+            "nvidia.com/gpu": "1",
+        },
+    },
     opts=pulumi.ResourceOptions(provider=k8s_provider))
 ```
 
