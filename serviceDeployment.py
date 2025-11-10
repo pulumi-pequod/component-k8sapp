@@ -94,6 +94,15 @@ class ServiceDeployment(ComponentResource):
                 EnvVarArgs(name=env_var["name"], value=env_var["value"])
             )
 
+        # Build the tolerations
+        toleration_args = []
+        if tolerations:
+            for toleration in tolerations:
+                if isinstance(toleration, dict):
+                    toleration_args.append(TolerationArgs(**toleration))
+                else:
+                    toleration_args.append(toleration)
+
         # Container config
         container = ContainerArgs(
             name=name,
@@ -119,7 +128,7 @@ class ServiceDeployment(ComponentResource):
                     spec=PodSpecArgs(
                         containers=[container],
                         node_selector=node_selector,
-                        tolerations=tolerations,
+                        tolerations=toleration_args if toleration_args else None,
                     ),
                 ),
             ),
