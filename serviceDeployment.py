@@ -59,10 +59,14 @@ class ServiceDeployment(ComponentResource):
         mem = args.get("mem", "100Mi")
         node_selector = args.get("node_selector")
         
-        resources = args.get("resources", 
-                             ResourceRequirementsArgs(requests={
-                                "cpu": cpu,
-                                "memory": mem}))
+        # Handle resources: if user provides resources, use it directly.
+        # Otherwise, build default resources from cpu/mem parameters.
+        # This allows users to specify full resource requirements including GPU limits.
+        resources = args.get("resources")
+        if resources is None:
+            resources = ResourceRequirementsArgs(
+                requests={"cpu": cpu, "memory": mem}
+            )
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", container_port)

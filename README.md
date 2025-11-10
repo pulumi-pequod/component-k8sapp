@@ -8,9 +8,12 @@ Abstraction for K8s Deployment and Service.
 * allocate_ip_address: Whether to allocate an IP address for the service. This should be true or false.
 * container_port: Container port to expose. This should be an integer.
 * host_port (Optional): Host port to expose. This should be an integer. Defaults to the value given for container port.
-* resources (Optional): Resource requirements for the container. Defaults to `cpu`: "100m", `memory`: "100Mi:.
+* cpu (Optional): CPU resource request. Units: millicores (e.g., '100m') or cores (e.g., '1', '0.5'). Defaults to "100m".
+* mem (Optional): Memory resource request. Units: bytes with optional suffixes (e.g., '128Mi', '1Gi', '512M'). Defaults to "100Mi".
+* resources (Optional): Full resource requirements for the container (requests and limits). If provided, this overrides cpu/mem parameters. Use this for advanced scenarios like GPU resources.
 * replicas (Optional): Number of replicas for the deployment. Defaults to 1.
 * env_vars (Optional): Environment variables to pass to cluster. Defaults to none.
+* node_selector (Optional): Node selector constraints for pod scheduling.
 
 # Outputs
 
@@ -30,8 +33,10 @@ packages:
 ## Use SDK in Program
 
 ### Python
-```
-from pulumi_pequod_k8sapp import ServiceDeployment, ServiceDeploymentArgs
+
+**Basic usage:**
+```python
+from pulumi_pequod_k8sapp import ServiceDeployment
 
 serviceDeployment = ServiceDeployment(
     "redis-leader",
@@ -40,7 +45,28 @@ serviceDeployment = ServiceDeployment(
     container_port=6379, 
     allocate_ip_address=False,
     opts=pulumi.ResourceOptions(provider=k8s_provider))
+```
 
+**With GPU resources (e.g., for GKE Autopilot):**
+```python
+import pulumi_kubernetes as k8s
+from pulumi_pequod_k8sapp import ServiceDeployment
+
+gpu_service = ServiceDeployment(
+    "gpu-workload",
+    namespace=namespace,
+    image="my-gpu-image",
+    container_port=8080,
+    allocate_ip_address=True,
+    node_selector={
+        "cloud.google.com/gke-accelerator": "nvidia-a100-80gb",
+        "cloud.google.com/gke-accelerator-count": "1",
+    },
+    resources=k8s.core.v1.ResourceRequirementsArgs(
+        requests={"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1"},
+        limits={"nvidia.com/gpu": "1"},
+    ),
+    opts=pulumi.ResourceOptions(provider=k8s_provider))
 ```
 
 ### Typescript
