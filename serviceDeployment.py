@@ -99,7 +99,15 @@ class ServiceDeployment(ComponentResource):
         if tolerations:
             for toleration in tolerations:
                 if isinstance(toleration, dict):
-                    toleration_args.append(TolerationArgs(**toleration))
+                    toleration_args.append(
+                        TolerationArgs(
+                            key=toleration.get("key"),
+                            operator=toleration.get("operator"),
+                            value=toleration.get("value"),
+                            effect=toleration.get("effect"),
+                            toleration_seconds=toleration.get("toleration_seconds"),
+                        )
+                    )
                 else:
                     toleration_args.append(toleration)
 
