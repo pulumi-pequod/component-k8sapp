@@ -103,6 +103,7 @@ class ServiceDeployment(ComponentResource):
         deployment = Deployment(
             name,
             metadata=ObjectMetaArgs(
+                name=name,
                 namespace=namespace
             ),
             spec=DeploymentSpecArgs(
@@ -138,7 +139,15 @@ class ServiceDeployment(ComponentResource):
 
         # Return IP address if applicable
         if allocate_ip_address:
-            ingress=service.status.apply(lambda s: s.load_balancer.ingress[0])
-            self.ip_address = ingress.apply(lambda i: i.ip or i.hostname or "")
+            # Robust IP address extraction that handles None cases
+            self.ip_address = service.status.apply(
+                lambda s: (
+                    s.load_balancer.ingress[0].ip
+                    or s.load_balancer.ingress[0].hostname
+                    or ""
+                    if s and s.load_balancer and s.load_balancer.ingress
+                    else ""
+                )
+            )
             
         self.register_outputs({})
