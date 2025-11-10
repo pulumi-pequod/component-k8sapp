@@ -23,8 +23,8 @@ class ServiceDeploymentArgs(TypedDict):
     """The namespace in which the service will be deployed"""
     image: pulumi.Input[str]
     """The image to deploy. This should be the full image reference including the registry and tag"""
-    resources: Optional[pulumi.Input[ResourceRequirementsArgs | dict]]
-    """Resource requirements for the container. Can be a ResourceRequirementsArgs object or a dict with 'requests' and/or 'limits' keys."""
+    resources: Optional[pulumi.Input[dict[str, pulumi.Input[str]]]]
+    """Resource requirements for the container.""" 
     replicas: Optional[pulumi.Input[int]]
     """Number of replicas for the deployment"""
     container_port: pulumi.Input[int]
@@ -70,12 +70,13 @@ class ServiceDeployment(ComponentResource):
         resources = args.get("resources")
         if resources is None:
             resources = ResourceRequirementsArgs(requests={"cpu": cpu, "memory": mem})
-        elif isinstance(resources, dict):
+        else:
             # Convert dict to ResourceRequirementsArgs to ensure proper Kubernetes API formatting
             resources = ResourceRequirementsArgs(
                 requests=resources.get("requests"),
                 limits=resources.get("limits")
             )
+
         replicas = args.get("replicas", 1)
         container_port = args.get("container_port", None)
         host_port = args.get("host_port", container_port)
