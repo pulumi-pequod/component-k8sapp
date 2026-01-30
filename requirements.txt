@@ -1,4 +1,2 @@
 pulumi>=3.5.1,<4.0.0
 pulumi-kubernetes>=4.0.0,<5.0.0
-grpcio>=1.68.0
-
